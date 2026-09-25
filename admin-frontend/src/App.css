@@ -256,3 +256,13 @@ td {
     padding: 15px;
   }
 }
+
+.action-button.delete {
+  background: #fee2e2;
+  color: #dc2626;
+  margin-left: 8px;
+}
+
+.action-button.delete:hover {
+  background: #fecaca;
+}

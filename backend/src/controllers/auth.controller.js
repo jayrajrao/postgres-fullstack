@@ -80,22 +80,30 @@ const login = async (req, res) => {
       });
     }
 
-   const token = jwt.sign(
-  {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  },
-  process.env.JWT_SECRET,
-  {
-    expiresIn: "1h",
-  }
-);
+    // Check user account status
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "Your account is inactive. Please contact admin.",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      }
+    );
 
     res.json({
       message: "Login successful",
       token,
     });
+
   } catch (error) {
     console.error(error.message);
 
