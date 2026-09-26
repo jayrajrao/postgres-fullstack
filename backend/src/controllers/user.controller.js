@@ -1,15 +1,20 @@
 const pool = require("../config/db");
 const cloudinary = require("../config/cloudinary");
+
 const getUsers = async (req, res) => {
   try {
-   const result = await pool.query(
-  `SELECT id, name, email, age, role, status, profile_image, created_at
-   FROM users
-   WHERE id = $1`,
-  [req.user.userId]
-);
+    const result = await pool.query(
+      `SELECT id, name, email, age, role, status, profile_image, created_at
+       FROM users
+       WHERE id != $1
+       ORDER BY id DESC`,
+      [req.user.userId]
+    );
 
-    res.json(result.rows);
+    res.json({
+      users: result.rows,
+    });
+
   } catch (error) {
     console.error(error.message);
 
@@ -22,11 +27,11 @@ const getUsers = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, email, age, created_at
-       FROM users
-       WHERE id = $1`,
-      [req.user.userId]
-    );
+  `SELECT id, name, email, age, role, status, profile_image, created_at
+   FROM users
+   WHERE id = $1`,
+  [req.user.userId]
+);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -148,9 +153,107 @@ const uploadProfileImage = async (req, res) => {
     });
   }
 };
+
+
+const getUserProfile = async (req, res) => {
+  try {
+    const viewerId = req.user.userId;
+    const targetUserId = parseInt(req.params.id);
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        message: "Invalid user ID",
+      });
+    }
+
+    // Apna khud ka profile dekh sakte ho
+    if (viewerId === targetUserId) {
+      const result = await pool.query(
+        `SELECT
+          id,
+          name,
+          email,
+          age,
+          role,
+          status,
+          profile_image,
+          created_at
+         FROM users
+         WHERE id = $1`,
+        [targetUserId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          message: "User not found",
+        });
+      }
+
+      return res.json({
+        user: result.rows[0],
+      });
+    }
+
+    // Check: kya dono accepted friends hain?
+    const friendshipResult = await pool.query(
+      `SELECT id
+       FROM friend_requests
+       WHERE status = 'accepted'
+       AND (
+         (sender_id = $1 AND receiver_id = $2)
+         OR
+         (sender_id = $2 AND receiver_id = $1)
+       )
+       LIMIT 1`,
+      [viewerId, targetUserId]
+    );
+
+    if (friendshipResult.rows.length === 0) {
+      return res.status(403).json({
+        message: "You can only view the profile of an accepted friend",
+      });
+    }
+
+    // Friend hai → profile + photo return
+    const result = await pool.query(
+      `SELECT
+        id,
+        name,
+        email,
+        age,
+        role,
+        status,
+        profile_image,
+        created_at
+       FROM users
+       WHERE id = $1`,
+      [targetUserId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      user: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to fetch profile",
+    });
+  }
+};
+
+
 module.exports = {
   getUsers,
   getProfile,
   updateProfile,
-  uploadProfileImage
+  uploadProfileImage,
+  getUserProfile
 };

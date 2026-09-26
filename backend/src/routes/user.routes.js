@@ -7,11 +7,16 @@ const {
   getProfile,
   updateProfile,
   uploadProfileImage,
+  getUserProfile,
 } = require("../controllers/user.controller");
 
 const router = express.Router();
 
-router.get("/", getUsers);
+router.get(
+  "/",
+  authenticateToken,
+  getUsers
+);
 
 router.get(
   "/profile",
@@ -28,5 +33,11 @@ router.patch(
   authenticateToken,
   upload.single("profileImage"),
   uploadProfileImage
+);
+
+router.get(
+  "/:id/profile",
+  authenticateToken,
+  getUserProfile
 );
 module.exports = router;
